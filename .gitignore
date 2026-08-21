@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+*.sqlite3
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+npm-debug.*
+
+# Android native build
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/app/src/main/assets/index.android.bundle
+*.keystore
+!debug.keystore
+
+# iOS
+frontend/ios/Pods/
+frontend/ios/build/
+
+# Misc
+.DS_Store
+*.log
+coverage/

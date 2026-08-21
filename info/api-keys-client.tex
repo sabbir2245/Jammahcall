@@ -1,0 +1,145 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+\title{\textbf{Getting Google API Keys for the App}}
+\author{}
+\date{}
+
+\setlist{itemsep=4pt}
+\hypersetup{colorlinks=true, urlcolor=blue}
+
+\begin{document}
+
+\maketitle
+\vspace{-2em}
+
+\section*{Before you start -- two-factor authorization}
+
+When you go to \url{https://console.cloud.google.com} for the first time, it
+will ask that your email account be set up with \textbf{two-factor
+authorization}. The easiest way to do this is by installing the
+\textbf{Google Authenticator} app on your phone.
+
+\begin{enumerate}
+  \item Install \textbf{Google Authenticator} from your phone's app store
+        (Google Play / App Store).
+  \item Log in with the \textbf{same email} in both Google Authenticator and
+        the website.
+  \item Verify Google Authenticator on your phone.
+  \item After that, \textbf{enable two-factor authorization} on your account.
+  \item Once enabled, you will be able to access the website.
+\end{enumerate}
+
+After you can access the website, follow the steps below.
+
+\section*{What you need to do}
+
+To get the map working in the app, we need \textbf{three API keys} from
+Google (plus one optional key for a website). Please follow the steps below
+and send the keys to the developer. Each key is a long string that starts
+with \texttt{AIza}.
+
+\begin{enumerate}
+  \item Go to \url{https://console.cloud.google.com} and sign in with your
+        Google account.
+  \item Create a new project (or choose an existing one). Click the project
+        name at the top of the page, then \textbf{New Project}, give it a
+        name, and click \textbf{Create}.
+  \item After the project is created, make sure it is selected (you should see
+        its name at the top of the screen).
+  \item Go to \url{https://console.cloud.google.com/billing} and \textbf{enable
+        billing} on the project. \textbf{Don't worry} -- a map-only app costs
+        \$0. Billing just needs to be enabled even though nothing will be
+        charged.
+\end{enumerate}
+
+\includegraphics[width=0.95\textwidth]{1.jpg}
+\begin{center}
+\textit{Image 1: Project and billing setup}
+\end{center}
+
+\section*{Key 1 -- Map SDK for Android}
+
+\begin{enumerate}
+  \item Open \url{https://console.cloud.google.com/apis/library/maps-android-backend.googleapis.com}
+        and click \textbf{Enable}.
+  \item Go to \url{https://console.cloud.google.com/apis/credentials} and click
+        \textbf{Create Credentials} $>$ \textbf{API Key}.
+  \item Copy the key that appears (it starts with \texttt{AIza}).
+  \item Label it \textbf{Android} so you can tell them apart.
+\end{enumerate}
+
+\includegraphics[width=0.95\textwidth]{2.jpg}
+\begin{center}
+\textit{Image 2: Creating an API key}
+\end{center}
+
+\section*{Key 2 -- Map SDK for iOS}
+
+\begin{enumerate}
+  \item Open \url{https://console.cloud.google.com/apis/library/maps-backend.googleapis.com}
+        and click \textbf{Enable}.
+  \item Go to \url{https://console.cloud.google.com/apis/credentials} and click
+        \textbf{Create Credentials} $>$ \textbf{API Key}.
+  \item Copy the key (starts with \texttt{AIza}).
+  \item Label it \textbf{iOS}.
+\end{enumerate}
+
+\section*{Key 3 -- Map SDK for Directions}
+
+\begin{enumerate}
+  \item Open \url{https://console.cloud.google.com/apis/library/directions-backend.googleapis.com}
+        and click \textbf{Enable}.
+  \item Go to \url{https://console.cloud.google.com/apis/credentials} and click
+        \textbf{Create Credentials} $>$ \textbf{API Key}.
+  \item Copy the key (starts with \texttt{AIza}).
+  \item Label it \textbf{Directions}.
+\end{enumerate}
+
+\section*{Key 4 -- Maps JavaScript API \textit{(optional, for a website)}}
+
+This key is \textbf{not needed for the phone app}. It is only for a website
+later on. Since it is free with no limit, you can create it now if you want.
+It is completely optional.
+
+\begin{enumerate}
+  \item Open \url{https://console.cloud.google.com/apis/library/maps-backend.googleapis.com}
+        and click \textbf{Enable}.
+  \item Go to \url{https://console.cloud.google.com/apis/credentials} and click
+        \textbf{Create Credentials} $>$ \textbf{API Key}.
+  \item Copy the key (starts with \texttt{AIza}).
+  \item Label it \textbf{JavaScript}.
+\end{enumerate}
+
+\includegraphics[width=0.95\textwidth]{3.jpg}
+\begin{center}
+\textit{Image 3: Copying the API key}
+\end{center}
+
+\section*{Sending the keys to us}
+
+\begin{tcolorbox}[colback=blue!5, colframe=blue!60, title=What to send]
+Please send us the \textbf{three required keys}, clearly labelled (the
+JavaScript key is optional):
+\begin{itemize}
+  \item \textbf{Android key:} \texttt{AIza...}
+  \item \textbf{iOS key:} \texttt{AIza...}
+  \item \textbf{Directions key:} \texttt{AIza...}
+  \item \textbf{JavaScript key (optional):} \texttt{AIza...}
+\end{itemize}
+\end{tcolorbox}
+
+\begin{itemize}
+  \item Keep the keys private and only share them with us.
+  \item The Directions API has a limited free allowance each month. If you
+        expect heavy usage, let the developer know so we can plan for it.
+\end{itemize}
+
+\end{document}
