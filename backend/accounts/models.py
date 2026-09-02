@@ -34,10 +34,15 @@ class User(AbstractUser):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default="")
     phone = models.CharField(max_length=20, blank=True)
     city = models.CharField(max_length=100, blank=True)
-    profile_picture = models.CharField(max_length=255, blank=True)
+    profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True)
     device_token = models.CharField(max_length=255, blank=True)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
+    AUTH_PROVIDER_CHOICES = [("email", "Email"), ("google", "Google")]
+    auth_provider = models.CharField(
+        max_length=10, choices=AUTH_PROVIDER_CHOICES, default="email"
+    )
 
     objects = UserManager()
 

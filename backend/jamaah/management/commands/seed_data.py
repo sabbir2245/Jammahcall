@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from jamaah.models import Jamaah, JoinRequest, Member, PrayNeed
+from jamaah.models import Favourite, Jamaah, JoinRequest, Member, PrayNeed, Report, Review
 
 User = get_user_model()
 
@@ -45,6 +45,15 @@ CITY_COORDINATES = {
 
 PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha", "jumuah"]
 LOCATION_TYPES = ["current", "selected", "public", "workplace", "university", "park", "other"]
+SCHEDULE_TYPES = ["one_time", "recurring"]
+RECURRING_DAYS_OPTIONS = [
+    [0, 1, 2, 3, 4],       # Mon-Fri
+    [4, 5],                  # Fri-Sat (Jumu'ah + weekend)
+    [0, 2, 4],              # Mon, Wed, Fri
+    None,                    # one-time
+    None,
+    None,
+]
 
 # Primary user base location for local nearby spatial queries
 BASE_LAT = 23.723152
@@ -86,13 +95,19 @@ class Command(BaseCommand):
         jamaahs = self.create_jamaahs(users)
         self.create_join_requests_and_members(users, jamaahs)
         self.create_pray_needs(users)
+        self.create_reviews(users, jamaahs)
+        self.create_favourites(users, jamaahs)
+        self.create_reports(users, jamaahs)
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"Seeded: {len(users)} users, {len(jamaahs)} Jama'ahs, "
                 f"{JoinRequest.objects.count()} join requests, "
                 f"{Member.objects.count()} members, "
-                f"{PrayNeed.objects.count()} pray needs."
+                f"{PrayNeed.objects.count()} pray needs, "
+                f"{Review.objects.count()} reviews, "
+                f"{Favourite.objects.count()} favourites, "
+                f"{Report.objects.count()} reports."
             )
         )
 
@@ -156,6 +171,9 @@ class Command(BaseCommand):
             # Scatter Jamaahs smoothly around the base coordinates (from 200m to 8km)
             lat, lng = get_varied_location(BASE_LAT, BASE_LNG, i, min_km=0.2, max_km=8.0)
 
+            sched_type = SCHEDULE_TYPES[i % len(SCHEDULE_TYPES)]
+            recur_days = RECURRING_DAYS_OPTIONS[i % len(RECURRING_DAYS_OPTIONS)]
+
             jamaah, created = Jamaah.objects.get_or_create(
                 organizer=organizer,
                 prayer=PRAYERS[i % len(PRAYERS)],
@@ -166,6 +184,8 @@ class Command(BaseCommand):
                     "address_label": f"Demo Location {i+1} ({LOCATION_TYPES[i % len(LOCATION_TYPES)].title()})",
                     "scheduled_at": now + timedelta(minutes=15 * (i % 6) + 5),
                     "max_participants": (i % 5) * 2 + 5,
+                    "schedule_type": sched_type,
+                    "recurring_days": recur_days,
                 },
             )
             if created:
@@ -209,5 +229,80 @@ class Command(BaseCommand):
                     "latitude": lat,
                     "longitude": lng,
                     "radius_miles": round(0.5 + (i % 4) * 0.5, 2),
+                },
+            )
+
+    def create_reviews(self, users, jamaahs):
+        comments = [
+            "Very well organized, arrived on time. Would recommend!",
+            "Great experience, nice people and good prayer setup.",
+            "The location was easy to find and the leader was friendly.",
+            "Good atmosphere, looking forward to the next one.",
+            "Alhamdulillah, everything went smoothly.",
+            "The organizer was punctual and welcoming to everyone.",
+            "Nice gathering, hope to join again soon.",
+            "Good coordination, everyone was respectful.",
+            "Clean location and well managed group.",
+            "Mashallah, a beautiful prayer experience.",
+            "The leader explained everything clearly.",
+            "Wonderful gathering with brothers and sisters.",
+            "Comfortable space and good vibes overall.",
+            "The organizer went above and beyond.",
+            "Simple but meaningful, JazakAllah Khair.",
+        ]
+        review_count = 0
+        for idx, jamaah in enumerate(jamaahs):
+            members = list(jamaah.members.all())
+            if not members:
+                continue
+            # Each member leaves a review for the organizer
+            for i, member in enumerate(members[:3]):
+                reviewer = member.user
+                reviewee = jamaah.organizer
+                if reviewer == reviewee:
+                    continue
+                rating = [5, 4, 5, 4, 5, 3][i % 6]
+                Review.objects.get_or_create(
+                    reviewer=reviewer,
+                    reviewee=reviewee,
+                    jamaah=jamaah,
+                    defaults={
+                        "rating": rating,
+                        "comment": comments[(idx * 3 + i) % len(comments)],
+                    },
+                )
+                review_count += 1
+
+    def create_favourites(self, users, jamaahs):
+        if not jamaahs:
+            return
+        for i, user in enumerate(users[5:15]):
+            # Each user favourites 2-3 random jamaahs
+            for j in range(2 + (i % 2)):
+                jamaah = jamaahs[(i + j * 3) % len(jamaahs)]
+                if jamaah.organizer != user:
+                    Favourite.objects.get_or_create(user=user, jamaah=jamaah)
+
+    def create_reports(self, users, jamaahs):
+        report_reasons = ["unsafe", "inaccurate", "harassment", "fake_listing", "other"]
+        for i in range(3):
+            reporter = users[10 + i]
+            reported_user = users[15 + i] if 15 + i < len(users) else users[1]
+            Report.objects.get_or_create(
+                reporter=reporter,
+                reported_user=reported_user,
+                defaults={
+                    "reason": report_reasons[i % len(report_reasons)],
+                    "details": f"Demo report #{i+1} for testing the admin panel.",
+                },
+            )
+        # Also create a report against a listing
+        if jamaahs and len(users) > 20:
+            Report.objects.get_or_create(
+                reporter=users[20],
+                reported_jamaah=jamaahs[0],
+                defaults={
+                    "reason": "inaccurate",
+                    "details": "Location pin seems wrong.",
                 },
             )

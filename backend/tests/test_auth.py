@@ -13,6 +13,7 @@ class AuthTests(APITestCase):
                 "email": "a@example.com",
                 "name": "Ahmed",
                 "password": "strongpass123",
+                "gender": "male",
                 "phone": "555-1234",
             },
             format="json",

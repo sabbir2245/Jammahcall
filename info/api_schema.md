@@ -2,7 +2,7 @@
 
 > REST API for the Jama'at MVP. Base URL: `/api/`.
 > Auth: Bearer JWT (`Authorization: Bearer <access_token>`) for all protected routes.
-> All requests/responses are JSON.
+> All requests/responses are JSON (except file uploads which use `multipart/form-data`).
 
 ---
 
@@ -10,6 +10,7 @@
 
 - Host: e.g. `http://localhost:8000`
 - Prefix: `/api`
+- Media files: `/media/` (served in DEBUG mode)
 - Error format: `{"detail": "..."}` or `{field: [errors]}`
 - Protected endpoints return `401` when no/invalid token.
 
@@ -27,12 +28,14 @@ Request:
   "email": "ahmed@example.com",
   "name": "Ahmed",
   "password": "strongpass123",
+  "gender": "male",
   "phone": "555-1234",
   "city": "Dubai",
   "latitude": 25.2048,
   "longitude": 55.2708
 }
 ```
+- `gender` required (`"male"` or `"female"`).
 - `phone`, `city`, `latitude`, `longitude` optional.
 
 Response `201`:
@@ -42,13 +45,17 @@ Response `201`:
     "id": 1,
     "email": "ahmed@example.com",
     "name": "Ahmed",
+    "gender": "male",
     "phone": "555-1234",
     "city": "Dubai",
-    "profile_picture": "",
+    "profile_picture": null,
+    "profile_picture_url": null,
     "device_token": "",
     "latitude": 25.2048,
     "longitude": 55.2708,
-    "date_joined": "2026-08-18T00:00:00Z"
+    "date_joined": "2026-08-18T00:00:00Z",
+    "average_rating": null,
+    "review_count": 0
   },
   "refresh": "<refresh_token>",
   "access": "<access_token>"
@@ -79,6 +86,31 @@ Response `200`: `{ "access": "<new_access_token>" }`
 - `GET`: returns the authenticated user (shape as in register `user` object).
 - `PATCH`: update any editable field (`name`, `phone`, `city`, `profile_picture`,
   `device_token`, `latitude`, `longitude`).
+- `profile_picture` accepts `multipart/form-data` with an `image` file field.
+
+### Public User Profile — `GET /api/auth/users/<id>/` (protected)
+
+Returns public profile for any user by ID, including `average_rating` and `review_count`.
+
+Response `200`:
+```json
+{
+  "id": 2,
+  "email": "b@example.com",
+  "name": "Bilal",
+  "gender": "male",
+  "phone": "",
+  "city": "Dhaka",
+  "profile_picture": "/media/profile_pictures/photo.jpg",
+  "profile_picture_url": "http://localhost:8000/media/profile_pictures/photo.jpg",
+  "device_token": "",
+  "latitude": null,
+  "longitude": null,
+  "date_joined": "2026-08-18T00:00:00Z",
+  "average_rating": 4.5,
+  "review_count": 6
+}
+```
 
 ---
 
@@ -89,6 +121,10 @@ Response `200`: `{ "access": "<new_access_token>" }`
 **GET** query params (all optional):
 - `prayer` — filter by prayer (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`, `jumuah`)
 - `lat`, `lng`, `radius` — nearby filter (radius in miles, default `5`)
+- `search` — text search across `address_label`, organizer `name`, `prayer` (case-insensitive)
+- `location_type` — filter by type (`current`, `selected`, `public`, `workplace`, `university`, `park`, `other`)
+- `status` — filter by status (`open`, `full`, `cancelled`, `completed`)
+- `sort` — `newest` (default), `oldest`, `popular` (by member count)
 
 Response `200` (array):
 ```json
@@ -97,24 +133,34 @@ Response `200` (array):
     "id": 1,
     "organizer": { "id": 1, "email": "ahmed@example.com", "name": "Ahmed" },
     "prayer": "asr",
-    "location_type": "current",
+    "location_type": "public",
     "latitude": 25.2048,
     "longitude": 55.2708,
-    "address_label": "",
+    "address_label": "Downtown Musalla",
     "scheduled_at": null,
-    "max_participants": null,
+    "max_participants": 10,
     "status": "open",
-    "member_count": 0,
+    "member_count": 3,
+    "images": [
+      {
+        "id": 1,
+        "jamaah": 1,
+        "image_url": "http://localhost:8000/media/jamaah_images/photo.jpg",
+        "caption": "",
+        "order": 0,
+        "created_at": "2026-08-18T00:00:00Z"
+      }
+    ],
     "created_at": "2026-08-18T00:00:00Z"
   }
 ]
 ```
 
-**POST** request:
+**POST** request (JSON or multipart):
 ```json
 {
   "prayer": "asr",
-  "location_type": "current",
+  "location_type": "public",
   "latitude": 25.2048,
   "longitude": 55.2708,
   "address_label": "City Park",
@@ -128,7 +174,7 @@ Response `200` (array):
 
 ### Retrieve — `GET /api/jamaah/<id>/`
 
-Returns a single Jama'ah object (with `member_count`).
+Returns a single Jama'ah object with `member_count` and nested `images` array.
 
 ### Members — `GET /api/jamaah/<id>/members/`
 
@@ -138,6 +184,20 @@ Returns the list of joined members:
   { "id": 1, "user": { "id": 2, "email": "b@example.com", "name": "B" }, "joined_at": "2026-08-18T00:00:00Z" }
 ]
 ```
+
+### Jama'ah Images — `GET` / `POST /api/jamaah/<id>/images/`
+
+**GET**: Returns all images for a Jama'ah, ordered by `order`.
+
+**POST** (`multipart/form-data`):
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `image` | file | yes | Image file (max ~10MB) |
+| `caption` | string | no | Image caption |
+| `order` | integer | no | Display order (0-2) |
+
+- Maximum 3 images per Jama'ah. Returns `400` if exceeded.
+- Response `201`: Image object with `image_url` (absolute URL).
 
 ### Create Join Request — `POST /api/jamaah/requests/`
 
@@ -170,6 +230,45 @@ Response `201`:
 ### Decline — `POST /api/jamaah/requests/<id>/decline/` (organizer only)
 
 - Response `200`: JoinRequest with `status: "declined"`.
+
+---
+
+## Reviews (`/api/jamaah/reviews/`) — protected
+
+### List / Create — `GET` / `POST /api/jamaah/reviews/`
+
+**GET** query params:
+- `user` — filter reviews for a specific user (by user ID)
+
+Response `200` (array):
+```json
+[
+  {
+    "id": 1,
+    "reviewer": { "id": 2, "email": "b@example.com", "name": "Bilal" },
+    "reviewee": { "id": 1, "email": "a@example.com", "name": "Ahmed" },
+    "jamaah": { "id": 5, "prayer": "asr" },
+    "rating": 5,
+    "comment": "Great organizer, very punctual!",
+    "created_at": "2026-08-18T00:00:00Z"
+  }
+]
+```
+
+**POST** request:
+```json
+{
+  "reviewee_id": 1,
+  "jamaah_id": 5,
+  "rating": 5,
+  "comment": "Great organizer, very punctual!"
+}
+```
+- `reviewee_id` required. `jamaah_id` optional.
+- `rating` must be 1-5.
+- Cannot review yourself. One review per reviewer/reviewee/jamaah combination.
+- `reviewer` is set to the authenticated user automatically.
+- Response `201`: Review object.
 
 ---
 
@@ -235,13 +334,61 @@ Returns a single PrayNeed object.
   "id": 1,
   "email": "a@example.com",
   "name": "Ahmed",
+  "gender": "male",
   "phone": "555-1234",
   "city": "Dubai",
-  "profile_picture": "",
+  "profile_picture": "/media/profile_pictures/photo.jpg",
+  "profile_picture_url": "http://localhost:8000/media/profile_pictures/photo.jpg",
   "device_token": "",
   "latitude": 25.2048,
   "longitude": 55.2708,
-  "date_joined": "2026-08-18T00:00:00Z"
+  "date_joined": "2026-08-18T00:00:00Z",
+  "average_rating": 4.5,
+  "review_count": 6
+}
+```
+
+### Jama'ah
+```json
+{
+  "id": 1,
+  "organizer": { "id": 1, "email": "a@example.com", "name": "Ahmed" },
+  "prayer": "asr",
+  "location_type": "public",
+  "latitude": 25.2048,
+  "longitude": 55.2708,
+  "address_label": "Downtown Musalla",
+  "scheduled_at": null,
+  "max_participants": 10,
+  "status": "open",
+  "member_count": 3,
+  "images": [],
+  "created_at": "2026-08-18T00:00:00Z"
+}
+```
+
+### Jama'ahImage
+```json
+{
+  "id": 1,
+  "jamaah": 1,
+  "image_url": "http://localhost:8000/media/jamaah_images/photo.jpg",
+  "caption": "",
+  "order": 0,
+  "created_at": "2026-08-18T00:00:00Z"
+}
+```
+
+### Review
+```json
+{
+  "id": 1,
+  "reviewer": { "id": 2, "email": "b@example.com", "name": "Bilal" },
+  "reviewee": { "id": 1, "email": "a@example.com", "name": "Ahmed" },
+  "jamaah": { "id": 5, "prayer": "asr" },
+  "rating": 5,
+  "comment": "Great organizer!",
+  "created_at": "2026-08-18T00:00:00Z"
 }
 ```
 
@@ -266,8 +413,11 @@ Returns a single PrayNeed object.
 
 1. `POST /api/auth/register/` → get `access` token.
 2. `POST /api/jamaah/` (with Bearer token) → create Jama'ah.
-3. `POST /api/jamaah/requests/` `{"jamaah": 1}` → request to join.
-4. `POST /api/jamaah/requests/<id>/accept/` → accept, becomes member.
+3. `POST /api/jamaah/<id>/images/` (multipart) → upload photos.
+4. `POST /api/jamaah/requests/` `{"jamaah": 1}` → request to join.
+5. `POST /api/jamaah/requests/<id>/accept/` → accept, becomes member.
+6. `POST /api/jamaah/reviews/` → rate the organizer after praying together.
+7. `GET /api/auth/users/<id>/` → view someone's profile and reviews.
 
 ---
 
