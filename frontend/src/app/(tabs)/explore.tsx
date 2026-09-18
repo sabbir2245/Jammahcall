@@ -126,35 +126,47 @@ export default function ExploreScreen() {
   return (
     <ThemedView style={styles.flex}>
       <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.header}>
-          {error ? (
-            <Pressable onPress={reload}>
-              <ThemedText type="small" themeColor="danger">
-                {error} (tap to retry)
-              </ThemedText>
-            </Pressable>
-          ) : null}
-        </View>
+        {/* Error Banner */}
+        {error ? (
+          <Pressable onPress={reload} style={[styles.errorBanner, { backgroundColor: '#DC262615' }]}>
+            <ThemedText type="small" themeColor="danger">
+              {error} — tap to retry
+            </ThemedText>
+          </Pressable>
+        ) : null}
 
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={[styles.searchInput, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-            placeholder="Search Jama'ahs..."
-            placeholderTextColor={theme.textSecondary}
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={reload}
-            returnKeyType="search"
-          />
-          <Pressable style={[styles.searchBtn, { backgroundColor: theme.primary }]} onPress={reload}>
-            <ThemedText type="smallBold" style={{ color: theme.primaryContrast }}>Go</ThemedText>
-          </Pressable>
+        <View style={styles.searchSection}>
+          <View style={[styles.searchBar, {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            shadowColor: theme.text,
+            shadowOpacity: 0.06,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
+          }]}>
+            <ThemedText style={{ fontSize: 15, color: theme.textSecondary }}>🔍</ThemedText>
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder="Search Jama'ahs..."
+              placeholderTextColor={theme.textSecondary}
+              value={search}
+              onChangeText={setSearch}
+              onSubmitEditing={reload}
+              returnKeyType="search"
+            />
+            <Pressable
+              style={[styles.goBtn, { backgroundColor: theme.primary }]}
+              onPress={reload}>
+              <ThemedText type="smallBold" style={{ color: theme.primaryContrast }}>Go</ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         {/* Filter Toggle */}
         <Pressable
-          style={styles.filterToggle}
+          style={[styles.filterToggle, { borderBottomColor: theme.border }]}
           onPress={() => setFiltersVisible(!filtersVisible)}>
           <ThemedText type="small" themeColor="textSecondary">
             {filtersVisible ? 'Hide filters ▲' : 'Show filters ▼'}
@@ -162,12 +174,11 @@ export default function ExploreScreen() {
         </Pressable>
 
         {filtersVisible && (
-          <>
+          <View style={[styles.filterSection, { backgroundColor: theme.card }]}>
             {/* Prayer Filter Chips */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.chipScroll}
               contentContainerStyle={styles.chipContainer}>
               {PRAYERS.map((p) => {
                 const selected = selectedPrayer === p;
@@ -194,48 +205,67 @@ export default function ExploreScreen() {
 
             {/* Sort Options */}
             <View style={styles.sortRow}>
-              <ThemedText type="small" themeColor="textSecondary">Sort:</ThemedText>
-              {SORT_OPTIONS.map((s) => {
-                const selected = selectedSort === s;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => setSelectedSort(s)}
-                    style={[
-                      styles.sortChip,
-                      {
-                        backgroundColor: selected ? theme.accent + '20' : 'transparent',
-                        borderColor: selected ? theme.accent : 'transparent',
-                      },
-                    ]}>
-                    <ThemedText
-                      type="small"
-                      style={{ color: selected ? theme.accent : theme.textSecondary, fontWeight: selected ? 700 : 500 }}>
-                      {s}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
+              <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: 600 }}>Sort</ThemedText>
+              <View style={styles.sortChips}>
+                {SORT_OPTIONS.map((s) => {
+                  const selected = selectedSort === s;
+                  return (
+                    <Pressable
+                      key={s}
+                      onPress={() => setSelectedSort(s)}
+                      style={[
+                        styles.sortChip,
+                        {
+                          backgroundColor: selected ? theme.accent + '20' : 'transparent',
+                          borderColor: selected ? theme.accent : theme.border,
+                        },
+                      ]}>
+                      <ThemedText
+                        type="small"
+                        style={{ color: selected ? theme.accent : theme.textSecondary, fontWeight: selected ? 700 : 500 }}>
+                        {s}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          </>
+          </View>
         )}
 
         {/* Action Buttons */}
         <View style={styles.buttonRow}>
-          <Button
-            title="Give location"
-            variant="secondary"
-            loading={locating}
-            style={styles.flexBtn}
-            onPress={() => getPosition(true)}
-          />
-          <Button title="Reload" variant="secondary" style={styles.flexBtn} onPress={reload} />
-          <Button title="Locate" variant="primary" style={styles.flexBtn} onPress={locate} />
+          <Pressable
+            style={[styles.actionBtn, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+            onPress={() => getPosition(true)}>
+            {locating ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <ThemedText style={{ fontSize: 16 }}>📍</ThemedText>
+            )}
+            <ThemedText type="small" style={{ color: theme.text, fontWeight: 500 }}>
+              {locating ? 'Locating...' : 'My Location'}
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.actionBtn, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}
+            onPress={reload}>
+            <ThemedText style={{ fontSize: 16 }}>🔄</ThemedText>
+            <ThemedText type="small" style={{ color: theme.text, fontWeight: 500 }}>Reload</ThemedText>
+          </Pressable>
+          <Pressable
+            style={[styles.actionBtn, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}
+            onPress={locate}>
+            <ThemedText style={{ fontSize: 16 }}>🎯</ThemedText>
+            <ThemedText type="small" style={{ color: theme.primary, fontWeight: 600 }}>Locate</ThemedText>
+          </Pressable>
         </View>
 
+        {/* Map */}
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator />
+            <ActivityIndicator color={theme.primary} size="large" />
+            <ThemedText type="small" themeColor="textSecondary">Loading map...</ThemedText>
           </View>
         ) : (
           <ExploreMap
@@ -246,10 +276,16 @@ export default function ExploreScreen() {
           />
         )}
 
+        {/* Count Bar */}
         {jamaahs.length > 0 && (
-          <View style={[styles.countBar, { backgroundColor: theme.backgroundSelected }]}>
+          <View style={[styles.countBar, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+            <View style={[styles.countBadge, { backgroundColor: theme.primary + '15' }]}>
+              <ThemedText type="small" style={{ color: theme.primary, fontWeight: 700 }}>
+                {jamaahs.length} Jama'ah{jamaahs.length !== 1 ? 's' : ''}
+              </ThemedText>
+            </View>
             <ThemedText type="small" themeColor="textSecondary">
-              {jamaahs.length} Jama'ah{jamaahs.length !== 1 ? 's' : ''} found
+              nearby
             </ThemedText>
           </View>
         )}
@@ -260,43 +296,53 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: {
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  errorBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  searchSection: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 4,
-    gap: 4,
+    paddingBottom: 8,
   },
-  searchContainer: {
+  searchBar: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   searchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     fontSize: 15,
+    paddingVertical: 0,
   },
-  searchBtn: {
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
+  goBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
-  chipScroll: {
-    flexGrow: 0,
-    marginBottom: 8,
+  filterToggle: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  filterSection: {
+    paddingBottom: 8,
+    gap: 8,
   },
   chipContainer: {
     paddingHorizontal: 16,
     gap: 8,
+    paddingVertical: 4,
   },
   chip: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 24,
     borderWidth: 1,
   },
@@ -304,30 +350,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    gap: 10,
+  },
+  sortChips: {
+    flexDirection: 'row',
     gap: 8,
-    marginBottom: 8,
   },
   sortChip: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-  },
-  filterToggle: {
-    alignItems: 'center',
-    paddingVertical: 6,
-    marginBottom: 4,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingVertical: 10,
   },
-  flexBtn: { flex: 1 },
-  countBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  countBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
 });

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/auth';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import {
   createJoinRequest,
+  createReview,
   fetchJamaah,
   fetchJamaahReviews,
   fetchMembers,
@@ -71,6 +72,11 @@ export default function JamaahDetailScreen() {
   const [membersExpanded, setMembersExpanded] = useState(false);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewNotice, setReviewNotice] = useState('');
+  const [reviewNoticeType, setReviewNoticeType] = useState<'ok' | 'err'>('ok');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,8 +175,38 @@ export default function JamaahDetailScreen() {
     );
   }, [jamaahId]);
 
+  const onSubmitReview = useCallback(async () => {
+    if (reviewRating < 1 || reviewRating > 5) {
+      setReviewNotice('Please select a star rating.');
+      setReviewNoticeType('err');
+      return;
+    }
+    setSubmittingReview(true);
+    setReviewNotice('');
+    try {
+      await createReview({
+        reviewee_id: jamaah!.organizer.id,
+        jamaah_id: jamaahId,
+        rating: reviewRating,
+        comment: reviewComment.trim() || undefined,
+      });
+      setReviewNotice('Review submitted!');
+      setReviewNoticeType('ok');
+      setReviewRating(0);
+      setReviewComment('');
+      load();
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail ?? e?.response?.data?.non_field_errors?.[0] ?? 'Could not submit review';
+      setReviewNotice(Array.isArray(msg) ? msg[0] : msg);
+      setReviewNoticeType('err');
+    } finally {
+      setSubmittingReview(false);
+    }
+  }, [reviewRating, reviewComment, jamaah, jamaahId, load]);
+
   const isOrganizer = jamaah && user && jamaah.organizer.id === user.id;
   const amMember = jamaah && members.some((m) => m.user.id === user?.id);
+  const hasAlreadyReviewed = reviews.some((r) => r.reviewer.id === user?.id);
 
   let action: { title: string; onPress: () => void; loading?: boolean; disabled?: boolean } | null =
     null;
@@ -427,6 +463,57 @@ export default function JamaahDetailScreen() {
                 ))
               )}
 
+              {/* Write a Review Form */}
+              {user && !isOrganizer && !hasAlreadyReviewed && amMember && (
+                <View style={[styles.reviewForm, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <ThemedText type="subtitle" style={{ marginBottom: Spacing.two }}>Write a Review</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
+                    Rate your experience with this Jama&apos;ah
+                  </ThemedText>
+
+                  {/* Star Rating Input */}
+                  <View style={styles.starInput}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Pressable key={star} onPress={() => setReviewRating(star)}>
+                        <ThemedText style={{ fontSize: 32, color: star <= reviewRating ? '#F59E0B' : '#D1D5DB' }}>
+                          ★
+                        </ThemedText>
+                      </Pressable>
+                    ))}
+                    {reviewRating > 0 && (
+                      <ThemedText type="small" themeColor="textSecondary" style={{ marginLeft: Spacing.two }}>
+                        {reviewRating}/5
+                      </ThemedText>
+                    )}
+                  </View>
+
+                  {/* Comment Input */}
+                  <TextInput
+                    style={[styles.reviewInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.inputBackground }]}
+                    placeholder="Share your experience (optional)..."
+                    placeholderTextColor={theme.textSecondary}
+                    value={reviewComment}
+                    onChangeText={setReviewComment}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+
+                  {reviewNotice ? (
+                    <ThemedText type="small" themeColor={reviewNoticeType === 'ok' ? 'success' : 'danger'}>
+                      {reviewNotice}
+                    </ThemedText>
+                  ) : null}
+
+                  <Button
+                    title="Submit Review"
+                    loading={submittingReview}
+                    disabled={submittingReview || reviewRating < 1}
+                    onPress={onSubmitReview}
+                  />
+                </View>
+              )}
+
               {notice ? (
                 <ThemedText themeColor={noticeType === 'ok' ? 'success' : 'danger'}>
                   {notice}
@@ -576,4 +663,23 @@ const styles = StyleSheet.create({
   reviewCard: { borderRadius: 16, borderWidth: 1, padding: Spacing.three },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reviewHeaderLeft: { gap: 4 },
+  reviewForm: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  starInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reviewInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    fontSize: 14,
+    minHeight: 80,
+  },
 });
